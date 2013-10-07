@@ -35,7 +35,7 @@ get_name(disconnect, S) ->
 	{stop, normal, S}.
 
 get_game({line, GameName}, S = #state{sock = Sock, name = Name}) ->
-	Game = game_sup:get(GameName),
+	{ok, Game} = game_index:get(GameName),
 	case game_fsm:join(Game, self(), Name) of
 		ok ->
 			gen_tcp:send(Sock, <<"MJoined game ", GameName/binary, "\n">>),

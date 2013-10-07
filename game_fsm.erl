@@ -51,7 +51,6 @@ init([Name]) ->
 	{ok, wait_players, #state{name = Name}}.
 
 terminate(_, _State, #state{name = Name}) ->
-	ets:delete(games, Name),
 	ok.
 
 wait_players({new_player, Pid, Name}, _From, S = #state{players = P, pnames = PN, name = N, mrefs = MR}) ->

@@ -1,7 +1,7 @@
 ERLOPTS= -pa . -DTEST
 ERLC=erlc $(ERLOPTS)
 
-all: deck.beam bids.beam game_fsm.beam game_sup.beam player.beam player_sup.beam
+all: deck.beam bids.beam game_fsm.beam game_sup.beam game_index.beam player.beam player_sup.beam
 
 clean:
 	rm -f *.beam
@@ -17,6 +17,9 @@ deck.beam: deck.erl
 
 game_fsm.beam: game_fsm.erl
 	$(ERLC) game_fsm.erl
+
+game_index.beam: game_index.erl
+	$(ERLC) game_index.erl
 
 game_sup.beam: game_sup.erl
 	$(ERLC) game_sup.erl
