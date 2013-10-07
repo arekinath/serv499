@@ -48,6 +48,7 @@ rotate_until(P, [Next | Players]) ->
 
 init([Name]) ->
 	% we start up waiting for players
+	io:format("[~p] game waiting for players\n", [Name]),
 	{ok, wait_players, #state{name = Name}}.
 
 terminate(_, _State, #state{name = Name}) ->
@@ -100,10 +101,12 @@ wait_players({disconnect, Pid}, S = #state{players = P, pnames = PN, mrefs = MR}
 
 % once we have our players, we can deal out the hands
 % we also return here later to deal new hands from the deck
-deal(timeout, S = #state{players = P, teams = Ts}) ->
+deal(timeout, S = #state{players = P, teams = Ts, name = Nm}) ->
+	io:format("[~p] dealing cards\n", [Nm]),
 	Ts1 = [T#team{tricks = 0} || T <- Ts],
-	% use two decks together to make card-counting less advantageous
-	Deck = deck:generate() ++ deck:generate(),
+
+	% generate and shuffle the deck
+	Deck = deck:generate(),
 
 	% deal out some hands
 	{Dealt, _} = deck:deal(Deck),
@@ -115,11 +118,13 @@ deal(timeout, S = #state{players = P, teams = Ts}) ->
 	{next_state, bid, S#state{hands = Hands, bidding = P, teams = Ts1, bid = none}, 0}.
 
 % if only one player is left bidding, they've won
-bid(timeout, S = #state{bidding = [P], players = Ps, bid = B}) ->
+bid(timeout, S = #state{bidding = [P], players = Ps, bid = B, name = Nm, pnames = PN}) ->
 	% tell everyone the winning bid
 	lists:foreach(fun(Player) ->
 		Player ! {winning_bid, B}
 	end, Ps),
+	Name = proplists:get_value(P, PN),
+	io:format("[~p] bidding won by ~p (~p)\n", [Nm, Name, B]),
 	% and let the player who won take the lead
 	{next_state, lead, S#state{players = rotate_until(P,Ps), bidwin = P}, 0};
 
@@ -242,7 +247,7 @@ trick({play, P, C}, S = #state{players = [P | Rest], hands = H, trick = T, pname
 trick({disconnect, P}, S = #state{players = [P | _Rest]}) ->
 	{next_state, abort, S#state{discon = P}, 0}.
 
-score(timeout, S = #state{hands = Hands, trick = T, bid = Bid, bidwin = BidWinner, teams = Teams, pnames = PN, players = Players}) ->
+score(timeout, S = #state{hands = Hands, trick = T, bid = Bid, bidwin = BidWinner, teams = Teams, pnames = PN, players = Players, name = Nm}) ->
 	{BidTricks, TrumpSuit} = Bid,
 	{_, {_, LeadSuit}} = lists:last(T),
 	Lte = fun({_, {R1,S1}}, {_, {R2,S2}}) ->
@@ -293,6 +298,7 @@ score(timeout, S = #state{hands = Hands, trick = T, bid = Bid, bidwin = BidWinne
 
 		% tell everyone the new scores
 		Scores = lists:zip(lists:seq(1,length(Teams2)), lists:map(fun(#team{score=Sc}) -> Sc end, Teams2)),
+		io:format("[~p] hand is over, new scores ~p\n", [Nm, Scores]),
 		lists:foreach(fun(Player) ->
 			Player ! {scores, Scores}
 		end, Players),
@@ -303,6 +309,7 @@ score(timeout, S = #state{hands = Hands, trick = T, bid = Bid, bidwin = BidWinne
 		% has anybody won or lost yet?
 		if AnyWinners orelse AnyLosers ->
 			% thanks for playing, kids
+			io:format("[~p] game over!\n", [Nm]),
 			lists:foreach(fun(Player) ->
 				Player ! game_over
 			end, Players),

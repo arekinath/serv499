@@ -128,7 +128,13 @@ handle_info({tcp, Sock, Data}, State, S = #state{sock = Sock, line = L}) ->
 			ChompLine = binary:part(Line, 0, byte_size(Line)-1),
 			?MODULE:State({line, ChompLine}, S#state{line = <<>>});
 		_ ->
-			{next_state, State, S#state{line = Line}}
+			if byte_size(Line) > 65535 ->
+				gen_tcp:send(Sock, [<<"MSorry, I don't like lines > 64kb\n">>]),
+				gen_tcp:close(Sock),
+				{stop, normal, S};
+			true ->
+				{next_state, State, S#state{line = Line}}
+			end
 	end;
 handle_info({tcp_closed, Sock}, State, S = #state{sock = Sock}) ->
 	?MODULE:State(disconnect, S);
