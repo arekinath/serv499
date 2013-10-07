@@ -121,12 +121,11 @@ play(reject, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, <<"MI'm sorry Dave, I can't do that\n">>),
 	{next_state, play, S}.
 
-handle_info({tcp, Sock, Data}, State, S = #state{sock = Sock, line = L, name = Nm}) ->
+handle_info({tcp, Sock, Data}, State, S = #state{sock = Sock, line = L}) ->
 	Line = <<L/binary, Data/binary>>,
 	case binary:last(Data) of
 		$\n ->
 			ChompLine = binary:part(Line, 0, byte_size(Line)-1),
-			io:format("[~p]: ~p\n", [Nm, ChompLine]),
 			?MODULE:State({line, ChompLine}, S#state{line = <<>>});
 		_ ->
 			{next_state, State, S#state{line = Line}}
