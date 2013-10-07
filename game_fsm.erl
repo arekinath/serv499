@@ -301,15 +301,15 @@ score(timeout, S = #state{hands = Hands, trick = T, bid = Bid, bidwin = BidWinne
 		AnyLosers = lists:any(fun(#team{score=Sc}) -> Sc < -499 end, Teams2),
 
 		% has anybody won or lost yet?
-		if (AnyWinners =:= []) andalso (AnyLosers =:= []) ->
-			% nope, deal out a new hand
-			{next_state, deal, S#state{teams = Teams2}, 0};
-		true ->
+		if AnyWinners orelse AnyLosers ->
 			% thanks for playing, kids
 			lists:foreach(fun(Player) ->
 				Player ! game_over
 			end, Players),
-			{stop, normal, S#state{teams = Teams2}}
+			{stop, normal, S#state{teams = Teams2}};
+		true ->
+			% nope, deal out a new hand
+			{next_state, deal, S#state{teams = Teams2}, 0}
 		end;
 
 	true ->
