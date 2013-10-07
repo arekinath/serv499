@@ -5,7 +5,7 @@
 valid(B) ->
 	points(B) > 0.
 
-points({Suit, N}) ->
+points({N, Suit}) ->
 	proplists:get_value(Suit,
 		[{"S", 0}, {"C", 10}, {"D", 20}, {"H", 30}], -300) +
 	proplists:get_value(N,

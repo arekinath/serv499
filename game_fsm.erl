@@ -142,8 +142,8 @@ bid({disconnect, P}, S = #state{bidding = [P | _Rest]}) ->
 	{next_state, abort, S#state{discon = P}, 0};
 
 bid({play, P, B1S}, S = #state{bidding = [P | Rest], bid = B, players = Ps, pnames = PN}) ->
-	{Suit,N} = B1S,
-	B1 = {Suit, catch (list_to_integer(N))},
+	{N, Suit} = B1S,
+	B1 = {catch (list_to_integer(N)), Suit},
 	case bids:valid(B1) of
 		true ->
 			case bids:greater(B1, B) of
@@ -243,7 +243,7 @@ trick({disconnect, P}, S = #state{players = [P | _Rest]}) ->
 	{next_state, abort, S#state{discon = P}, 0}.
 
 score(timeout, S = #state{hands = Hands, trick = T, bid = Bid, bidwin = BidWinner, teams = Teams, pnames = PN, players = Players}) ->
-	{TrumpSuit, BidTricks} = Bid,
+	{BidTricks, TrumpSuit} = Bid,
 	{_, {_, LeadSuit}} = lists:last(T),
 	Lte = fun({_, {R1,S1}}, {_, {R2,S2}}) ->
 		if

@@ -84,8 +84,8 @@ wait_play(first_bid, S = #state{sock = Sock}) ->
 	{next_state, play, S};
 
 wait_play({bid, LastBid}, S = #state{sock = Sock}) ->
-	{Su,N} = LastBid,
-	gen_tcp:send(Sock, [<<"B">>, Su, integer_to_list(N), <<"\n">>]),
+	{N,Su} = LastBid,
+	gen_tcp:send(Sock, [<<"B">>, integer_to_list(N), Su, <<"\n">>]),
 	{next_state, play, S};
 
 wait_play(lead, S = #state{sock = Sock}) ->
@@ -121,11 +121,12 @@ play(reject, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, <<"MI'm sorry Dave, I can't do that\n">>),
 	{next_state, play, S}.
 
-handle_info({tcp, Sock, Data}, State, S = #state{sock = Sock, line = L}) ->
+handle_info({tcp, Sock, Data}, State, S = #state{sock = Sock, line = L, name = Nm}) ->
 	Line = <<L/binary, Data/binary>>,
 	case binary:last(Data) of
 		$\n ->
 			ChompLine = binary:part(Line, 0, byte_size(Line)-1),
+			io:format("[~p]: ~p\n", [Nm, ChompLine]),
 			?MODULE:State({line, ChompLine}, S#state{line = <<>>});
 		_ ->
 			{next_state, State, S#state{line = Line}}
@@ -136,14 +137,14 @@ handle_info({tcp_closed, Sock}, State, S = #state{sock = Sock}) ->
 handle_info({bid_info, P, pass}, _, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, [<<"M">>, P, <<" passes\n">>]),
 	{next_state, wait_play, S};
-handle_info({bid_info, P, {Su,N}}, _, S = #state{sock = Sock}) ->
-	gen_tcp:send(Sock, [<<"M">>, P, <<" bids ">>, Su, integer_to_list(N), <<"\n">>]),
+handle_info({bid_info, P, {N,Su}}, _, S = #state{sock = Sock}) ->
+	gen_tcp:send(Sock, [<<"M">>, P, <<" bids ">>, integer_to_list(N), Su, <<"\n">>]),
 	{next_state, wait_play, S};
 handle_info({play_info, P, {R,Su}}, _, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, [<<"M">>, P, <<" plays ">>, R, Su, <<"\n">>]),
 	{next_state, wait_play, S};
-handle_info({winning_bid, {Su,N}}, _, S = #state{sock = Sock}) ->
-	gen_tcp:send(Sock, [<<"T">>, Su, integer_to_list(N), <<"\n">>]),
+handle_info({winning_bid, {N,Su}}, _, S = #state{sock = Sock}) ->
+	gen_tcp:send(Sock, [<<"T">>, integer_to_list(N), Su, <<"\n">>]),
 	{next_state, wait_play, S};
 handle_info({trick_won, P}, _, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, [<<"MTrick won by ">>, P, <<"\n">>]),
