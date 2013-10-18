@@ -186,9 +186,11 @@ bid({play, P, B1S}, S = #state{bidding = [P | Rest], bid = B, players = Ps, pnam
 					end, Ps -- [P]),
 					{next_state, bid, S#state{bidding = Rest ++ [P], bid = B1}, 0};
 				_ ->
+					P ! reject,
 					{next_state, bid, S}
 			end;
 		_ ->
+			P ! reject,
 			{next_state, bid, S}
 	end;
 

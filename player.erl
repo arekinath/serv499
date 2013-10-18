@@ -35,7 +35,7 @@
 start_link(ListenSock) ->
 	gen_fsm:start_link(?MODULE, [ListenSock], []).
 
--record(state, {lsock, sock, line, name, game}).
+-record(state, {lsock, sock, line, name, game, last_prompt}).
 
 iol_join([], _) -> [];
 iol_join([Next], _Sep) -> [Next];
@@ -108,20 +108,20 @@ wait_play({scores, Scores}, S = #state{sock = Sock}) ->
 
 wait_play(first_bid, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, <<"B\n">>),
-	{next_state, play, S};
+	{next_state, play, S#state{last_prompt = first_bid}};
 
 wait_play({bid, LastBid}, S = #state{sock = Sock}) ->
 	{N,Su} = LastBid,
 	gen_tcp:send(Sock, [<<"B">>, integer_to_list(N), Su, <<"\n">>]),
-	{next_state, play, S};
+	{next_state, play, S#state{last_prompt = {bid, LastBid}}};
 
 wait_play(lead, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, <<"L\n">>),
-	{next_state, play, S};
+	{next_state, play, S#state{last_prompt = lead}};
 
 wait_play({follow, Suit}, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, [<<"P">>, Suit, <<"\n">>]),
-	{next_state, play, S};
+	{next_state, play, S#state{last_prompt = {follow, Suit}}};
 
 wait_play({line, <<"M", Rest/binary>>}, S = #state{game = Game}) ->
 	game_fsm:chat(Game, self(), Rest),
@@ -144,9 +144,9 @@ play(accept, S = #state{sock = Sock}) ->
 	gen_tcp:send(Sock, <<"A\n">>),
 	{next_state, wait_play, S};
 
-play(reject, S = #state{sock = Sock}) ->
+play(reject, S = #state{sock = Sock, last_prompt = LP}) ->
 	gen_tcp:send(Sock, <<"MI'm sorry Dave, I can't do that\n">>),
-	{next_state, play, S}.
+	wait_play(LP, S).
 
 handle_info({tcp, Sock, Data}, State, S = #state{sock = Sock, line = L}) ->
 	Line = <<L/binary, Data/binary>>,
